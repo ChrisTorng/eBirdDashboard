@@ -1,0 +1,20 @@
+name: Verify build and official taxonomy
+on:
+  push:
+    branches: [main]
+    paths: ['site/**','worker/**','scripts/**','tests/**','package.json','.github/workflows/verify.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npm test
+      - run: node --check site/app.mjs && node --check worker/index.mjs
+      - run: npm run build
