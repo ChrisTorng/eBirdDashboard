@@ -1,2 +1,4 @@
 import {mkdir,copyFile} from 'node:fs/promises';await mkdir('site/vendor',{recursive:true});await Promise.all([['node_modules/echarts/dist/echarts.min.js','echarts.min.js'],['node_modules/papaparse/papaparse.min.js','papaparse.min.js'],['node_modules/fflate/umd/index.js','fflate.js']].map(([src,dest])=>copyFile(src,'site/vendor/'+dest)));
 import {writeFile} from 'node:fs/promises';import {fetchOfficialTaxonomy} from '../site/taxonomy.mjs';const taxonomy=await fetchOfficialTaxonomy();await writeFile('site/taxonomy.json',JSON.stringify(taxonomy));console.log('Official taxonomy v'+taxonomy.version+': '+taxonomy.taxa.length+' taxa, '+taxonomy.taxa.filter(t=>t.category==='species').length+' species');
+
+await Promise.all([copyFile('node_modules/leaflet/dist/leaflet.js','site/vendor/leaflet.js'),copyFile('node_modules/leaflet/dist/leaflet.css','site/vendor/leaflet.css')]);

@@ -56,3 +56,7 @@ AI agent：先讀 README、wrangler.example.jsonc、worker/migrations 和測試�
 
 官方來源：https://api.ebird.org/v2/ref/taxonomy/ebird?fmt=csv&locale=zh
 分類更新：https://www.birds.cornell.edu/clementschecklist/introduction/updateindex/october-2026/
+
+
+## Geographic scopes and summaries
+The CSV State/Province, County, Latitude and Longitude fields are retained. Select world/country/administrative region or individual site. Map markers use all geocoded sites and logarithmic visit-frequency colors; OpenStreetMap receives viewport tile requests, not checklist contents. Summary cards count distinct species across the visible chart time range, known individuals and checklists. Alias management ranks observed taxa by checklist frequency within the visible interval. Existing installations must apply migration 0003 before deploying the updated Worker; reimport older records to populate geographic metadata. The authenticated dataset API is paginated and loaded into browser memory for consistent local and cloud calculations.

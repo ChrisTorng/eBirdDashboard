@@ -36,6 +36,11 @@ export default {async fetch(req,env){
   if(!await authenticated(req,env))return json({error:'Access authentication required'},401);
   if(req.method==='POST'&&req.headers.get('Origin')!=='https://'+HOST)return json({error:'Invalid origin'},403);
   try {
+    if(req.method==='GET'&&url.pathname==='/api/capabilities'){return json({schema:3,taxonomy:VERSION});}
+    if(req.method==='GET'&&url.pathname==='/api/dataset'){
+      const after=url.searchParams.get('after')||'';if(after&&!/^S\d+$/.test(after))return json({error:'Invalid cursor'},400);
+      const r=await env.DB.prepare('SELECT * FROM checklists WHERE id > ? ORDER BY id LIMIT 101').bind(after).all();const items=r.results.slice(0,100);return json({rows:items.map(x=>({...x,observations:JSON.parse(x.observations)})),next:r.results.length>100?items.at(-1).id:null});
+    }
     if(req.method==='GET'&&url.pathname==='/api/taxonomy'){return json(await getTaxonomy());}
     if(req.method==='GET'&&url.pathname==='/api/locations'){
       const r=await env.DB.prepare('SELECT location_id, MAX(location) AS location, COUNT(*) AS visits, MAX(date) AS latest FROM checklists GROUP BY location_id ORDER BY visits DESC, location').all();
@@ -56,9 +61,9 @@ export default {async fetch(req,env){
       const rows=JSON.parse(raw);if(!Array.isArray(rows)||!rows.length||rows.length>30||!rows.every(validate))return json({error:'Invalid checklist batch'},400);
       const previous=await env.DB.prepare("SELECT taxonomy_version FROM checklists WHERE taxonomy_version <> ? LIMIT 1").bind(VERSION).first();if(previous)return json({error:'Existing data uses a different taxonomy version; full migration required'},409);
       let index;try{index=taxonomyIndex(await getTaxonomy())}catch(e){return json({error:'Official taxonomy unavailable: '+e.message},503)}
-      const sql='INSERT INTO checklists (id,location_id,location,date,time,duration,distance,protocol,complete,species,individuals,unknown,observations,taxonomy_version,unresolved) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET location_id=excluded.location_id,location=excluded.location,date=excluded.date,time=excluded.time,duration=excluded.duration,distance=excluded.distance,protocol=excluded.protocol,complete=excluded.complete,species=excluded.species,individuals=excluded.individuals,unknown=excluded.unknown,observations=excluded.observations,taxonomy_version=excluded.taxonomy_version,unresolved=excluded.unresolved';
+      const sql='INSERT INTO checklists (id,location_id,location,date,time,duration,distance,protocol,complete,species,individuals,unknown,observations,taxonomy_version,unresolved,region,county,lat,lon) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET location_id=excluded.location_id,location=excluded.location,date=excluded.date,time=excluded.time,duration=excluded.duration,distance=excluded.distance,protocol=excluded.protocol,complete=excluded.complete,species=excluded.species,individuals=excluded.individuals,unknown=excluded.unknown,observations=excluded.observations,taxonomy_version=excluded.taxonomy_version,unresolved=excluded.unresolved,region=excluded.region,county=excluded.county,lat=excluded.lat,lon=excluded.lon';
       const number=x=>typeof x==='number'&&Number.isFinite(x)?x:null;
-      await env.DB.batch(rows.map(c=>{const s=summarizeOfficial(c.observations.map(o=>({common:o.common,scientific:o.scientific,count:o.count})),index);return env.DB.prepare(sql).bind(c.id,c.location_id,c.location,c.date,c.time,number(c.duration),number(c.distance),typeof c.protocol==='string'?c.protocol.slice(0,100):null,c.complete===1?1:0,s.species,s.individuals,s.unknown,JSON.stringify(s.observations),s.taxonomy_version,s.unresolved)}));
+      await env.DB.batch(rows.map(c=>{const s=summarizeOfficial(c.observations.map(o=>({common:o.common,scientific:o.scientific,count:o.count})),index);return env.DB.prepare(sql).bind(c.id,c.location_id,c.location,c.date,c.time,number(c.duration),number(c.distance),typeof c.protocol==='string'?c.protocol.slice(0,100):null,c.complete===1?1:0,s.species,s.individuals,s.unknown,JSON.stringify(s.observations),s.taxonomy_version,s.unresolved,typeof c.region==='string'?c.region.slice(0,32):'',typeof c.county==='string'?c.county.slice(0,100):'',typeof c.lat==='number'&&Math.abs(c.lat)<=90?c.lat:null,typeof c.lon==='number'&&Math.abs(c.lon)<=180?c.lon:null)}));
       return json({imported:rows.length});
     }
     return json({error:'Not found'},404);
