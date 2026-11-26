@@ -1,0 +1,24 @@
+{
+  "name": "ebird-dashboard",
+  "main": "worker/index.mjs",
+  "compatibility_date": "2026-11-26",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    {
+      "pattern": "ebird-dashboard.christorng.idv.tw/api/*",
+      "zone_name": "christorng.idv.tw"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "ebird-dashboard",
+      "database_id": "825bc3e3-c5d0-4c4f-a6a6-1e197430d8e6",
+      "migrations_dir": "worker/migrations"
+    }
+  ],
+  "vars": {
+    "ACCESS_AUD": "8f13cc37e7bb98be967c075cbd3fa0575fd68c5d51830a6f4ee687c460648958"
+  }
+}

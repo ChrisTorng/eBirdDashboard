@@ -1,0 +1,7 @@
+node_modules/
+site/vendor/
+.wrangler/
+.dev.vars*
+*.csv
+*.zip
+.env*
