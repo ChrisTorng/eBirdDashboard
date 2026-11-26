@@ -23,15 +23,8 @@ async function authenticated(req,env){
     return await crypto.subtle.verify('RSASSA-PKCS1-v1_5',key,decode(s),new TextEncoder().encode(h+'.'+p));
   }catch{return false}
 }
-export function speciesKey(name){
-  const t=name.trim().split(/\s+/);
-  return t.length>=2 && /^[A-Z][a-z]+$/.test(t[0]) && /^[a-z]+$/.test(t[1]) && !['sp','spp','x'].includes(t[1]) && !/[×/]|\shybrid\b/i.test(t.slice(0,2).join(' ')) ? t.slice(0,2).join(' '):null;
-}
-export function summarize(observations){
-  const keys=new Set();let individuals=0,unknown=0;
-  for(const o of observations){const k=speciesKey(o.scientific);if(k)keys.add(k);if(o.count==='X')unknown++;else individuals+=Number(o.count)}
-  return {species:keys.size,individuals,unknown};
-}
+export function speciesKey(name){const t=name.trim().split(/\s+/);return t.length>=2&&/^[A-Z][a-z]+$/.test(t[0])&&/^[a-z]+$/.test(t[1])&&!['sp','spp','x'].includes(t[1])&&!/[×/]|\sx\s|\shybrid\b/i.test(name)?t.slice(0,2).join(' '):null}
+export function summarize(obs){let species=new Set(),individuals=0,unknown=0;for(const o of obs){let k=speciesKey(o.scientific);if(k)species.add(k);if(o.count==='X')unknown++;else individuals+=o.count}return {species:species.size,individuals,unknown}}
 function validate(c){
   if(!c||!/^S\d+$/.test(c.id)||!/^L\d+$/.test(c.location_id)||typeof c.location!=='string'||c.location.length>1000||!/^\d{4}-\d{2}-\d{2}$/.test(c.date)||typeof c.time!=='string'||c.time.length>20||!Array.isArray(c.observations)||!c.observations.length||c.observations.length>1000)return false;
   return c.observations.every(o=>o&&typeof o.common==='string'&&o.common.length<=400&&typeof o.scientific==='string'&&o.scientific.length<=400&& (o.count==='X'||(Number.isSafeInteger(o.count)&&o.count>=0)));
