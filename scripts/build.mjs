@@ -1,0 +1,1 @@
+import {mkdir,copyFile} from 'node:fs/promises';await mkdir('site/vendor',{recursive:true});await Promise.all([['node_modules/echarts/dist/echarts.min.js','echarts.min.js'],['node_modules/papaparse/papaparse.min.js','papaparse.min.js'],['node_modules/fflate/umd/index.js','fflate.js']].map(([src,dest])=>copyFile(src,'site/vendor/'+dest)));
