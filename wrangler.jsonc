@@ -19,6 +19,8 @@
     }
   ],
   "vars": {
-    "ACCESS_AUD": "8f13cc37e7bb98be967c075cbd3fa0575fd68c5d51830a6f4ee687c460648958"
+    "ACCESS_AUD": "8f13cc37e7bb98be967c075cbd3fa0575fd68c5d51830a6f4ee687c460648958",
+    "APP_HOST": "ebird-dashboard.christorng.idv.tw",
+    "ACCESS_ISSUER": "https://christorng.cloudflareaccess.com"
   }
 }

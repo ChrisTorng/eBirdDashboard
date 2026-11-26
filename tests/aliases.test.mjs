@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {displayName,validAliases} from '../site/aliases.mjs';
+const o={common:'Spotted Dove',official_common:'珠頸斑鳩',taxon_code:'spodov'};
+test('official is default, preset and custom are opt-in',()=>{assert.equal(displayName(o,'official',{spodov:'我的簡稱'}),'珠頸斑鳩');assert.equal(displayName(o,'preset',{}),'珠頸');assert.equal(displayName(o,'preset',{spodov:'我的簡稱'}),'我的簡稱');assert.equal(displayName(o,'custom',{}),'珠頸斑鳩')});
+test('no parent alias fallback or guessing unmatched taxon',()=>{assert.equal(displayName({...o,taxon_code:'other',species_code:'spodov'},'preset',{}),'珠頸斑鳩');assert.equal(displayName({...o,taxon_code:null},'preset',{}),'珠頸斑鳩')});
+test('import only aliases from counter backup',()=>{assert.equal(validAliases({aliases:{spodov:'珠頸'},locations:[{secret:'private'}]}).spodov,'珠頸');assert.throws(()=>validAliases({spodov:' '}));assert.throws(()=>validAliases({'bad code':'x'}))});

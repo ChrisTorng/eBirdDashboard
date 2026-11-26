@@ -1,13 +1,13 @@
 import {VERSION,fetchOfficialTaxonomy,taxonomyIndex,summarizeOfficial} from '../site/taxonomy.mjs';
 let taxonomyPromise;
 async function getTaxonomy(){if(!taxonomyPromise)taxonomyPromise=fetchOfficialTaxonomy().catch(e=>{taxonomyPromise=null;throw e});return taxonomyPromise;}
-const HOST = 'ebird-dashboard.christorng.idv.tw';
-const ISSUER = 'https://christorng.cloudflareaccess.com';
+
 const json = (body, status=200) => Response.json(body,{status,headers:{'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
 let keyCache = null;
 const decode = s => Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(s.length/4)*4,'=')), c=>c.charCodeAt(0));
 const parse = s => JSON.parse(new TextDecoder().decode(decode(s)));
 async function authenticated(req,env){
+  const ISSUER=env.ACCESS_ISSUER; if(!ISSUER||!/^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(ISSUER))return false;
   try {
     const jwt=req.headers.get('Cf-Access-Jwt-Assertion');
     if(!jwt||!env.ACCESS_AUD) return false;
@@ -31,7 +31,7 @@ function validate(c){
   return c.observations.every(o=>o&&typeof o.common==='string'&&o.common.length<=400&&typeof o.scientific==='string'&&o.scientific.length<=400&& (o.count==='X'||(Number.isSafeInteger(o.count)&&o.count>=0)));
 }
 export default {async fetch(req,env){
-  const url=new URL(req.url);
+  const url=new URL(req.url);const HOST=env.APP_HOST;if(!HOST)return json({error:'Missing deployment configuration'},503);
   if(url.hostname!==HOST||!url.pathname.startsWith('/api/'))return json({error:'Not found'},404);
   if(!await authenticated(req,env))return json({error:'Access authentication required'},401);
   if(req.method==='POST'&&req.headers.get('Origin')!=='https://'+HOST)return json({error:'Invalid origin'},403);

@@ -42,7 +42,7 @@ export function resolveTaxon(o,index){
  if(parent?.category!=='species')parent=null;
  // Domestic taxa generally do not count; only official established feral exceptions.
  if(t.category==='domestic'&&!['Columba livia (Feral Pigeon)','Cairina moschata (Established Feral)'].includes(t.scientific))parent=null;
- return {...o,taxon_code:t.code,taxon_concept_id:t.concept||null,category:t.category,species_code:parent?.code||null,species_concept_id:parent?.concept||null,resolution:'matched'};
+ return {...o,official_common:t.common||o.common,taxon_code:t.code,taxon_concept_id:t.concept||null,category:t.category,species_code:parent?.code||null,species_concept_id:parent?.concept||null,resolution:'matched'};
 }
 export function summarizeOfficial(observations,index){
  const resolved=observations.map(o=>resolveTaxon(o,index));let individuals=0,unknown=0,unresolved=0;const species=new Set();
