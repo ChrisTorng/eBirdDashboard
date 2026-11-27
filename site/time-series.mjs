@@ -11,3 +11,7 @@ export function visibleBuckets(buckets,start,end){if(!buckets.length)return [];c
 export function panWindow(start,end,delta){const width=end-start;const next=Math.max(0,Math.min(100-width,start+delta));return [next,next+width]}
 export function zoomWindow(start,end,factor,anchor){const width=end-start;const w=Math.min(100,Math.max(.05,width*factor));const a=start+width*Math.max(0,Math.min(1,anchor));const next=Math.max(0,Math.min(100-w,a-w*anchor));return [next,next+w]}
 export function wheelIntent(e){if(e.ctrlKey)return 'zoom';if(e.shiftKey||Math.abs(e.deltaX)>Math.abs(e.deltaY))return 'pan';return 'scroll'}
+
+export function sortBuckets(buckets,order){const field=['species','individuals','visits'].includes(order)?order:null;return [...buckets].sort((a,b)=>(field?b[field]-a[field]:0)||a.time-b.time||a.key.localeCompare(b.key))}
+export function visibleRankBuckets(buckets,start,end){if(!buckets.length)return [];const max=buckets.length-1;return buckets.slice(Math.max(0,Math.round(max*start/100)),Math.min(max,Math.round(max*end/100))+1)}
+export function nearestTimeBucket(buckets,t){if(!buckets.length)return undefined;let lo=0,hi=buckets.length-1;while(lo<hi){const mid=(lo+hi)>>1;if(buckets[mid].time<t)lo=mid+1;else hi=mid}return lo>0&&Math.abs(buckets[lo-1].time-t)<=Math.abs(buckets[lo].time-t)?buckets[lo-1]:buckets[lo]}
