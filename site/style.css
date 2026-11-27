@@ -35,3 +35,5 @@
  #mapDialog #mapLegend{flex-direction:row;flex-wrap:wrap}
  #mapDialog #map{height:100%}
 }
+
+#detailPanel{scroll-margin-top:8px}.chartActions{display:flex;justify-content:flex-end}.chartActions button,#showAggregate{min-height:36px;font-size:13px}.chartFullscreen{background:var(--bg);display:grid!important;grid-template-columns:minmax(0,1fr) minmax(280px,32%);gap:8px;padding:8px;height:100dvh;width:100%;overflow:hidden}.chartFullscreen>#chartPanel,.chartFullscreen>#detailPanel{margin:0;min-height:0;overflow:auto}.chartFullscreen>#chartPanel{display:flex;flex-direction:column}.chartFullscreen>#chartPanel #chart{flex:1;min-height:220px;height:auto}.chartFullscreen>:not(#chartPanel):not(#detailPanel){display:none!important}.fallbackFullscreen{position:fixed;inset:0;z-index:9999}.chartFullscreen #detailPanel{scroll-margin:0}@media(max-width:760px) and (orientation:portrait){.chartFullscreen{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,55%) minmax(0,45%)}.chartFullscreen>#chartPanel #chart{min-height:150px}}
