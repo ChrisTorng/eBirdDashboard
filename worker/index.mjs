@@ -36,7 +36,7 @@ export default {async fetch(req,env){
   if(!await authenticated(req,env))return json({error:'Access authentication required'},401);
   if(req.method==='POST'&&req.headers.get('Origin')!=='https://'+HOST)return json({error:'Invalid origin'},403);
   try {
-    if(req.method==='GET'&&url.pathname==='/api/capabilities'){return json({schema:4,taxonomy:VERSION});}
+    if(req.method==='GET'&&url.pathname==='/api/capabilities'){return json({schema:4,taxonomy:VERSION,checklistSync:true});}
     if(req.method==='GET'&&url.pathname==='/api/dataset'){
       const after=url.searchParams.get('after')||'';if(after&&!/^S\d+$/.test(after))return json({error:'Invalid cursor'},400);
       const limit=200;const r=await env.DB.prepare('SELECT * FROM checklists WHERE id > ? ORDER BY id LIMIT ?').bind(after,limit+1).all();const items=r.results.slice(0,limit);const total=after?undefined:(await env.DB.prepare('SELECT COUNT(*) AS n FROM checklists').first()).n;return json({rows:items.map(x=>({...x,observations:JSON.parse(x.observations)})),next:r.results.length>limit?items.at(-1).id:null,total});
@@ -56,15 +56,32 @@ export default {async fetch(req,env){
       const r=await env.DB.prepare('SELECT * FROM checklists WHERE id=?').bind(id).first();if(!r)return json({error:'Not found'},404);
       return json({...r,observations:JSON.parse(r.observations)});
     }
-    if(req.method==='POST'&&url.pathname==='/api/import'){
+    if(req.method==='POST'&&['/api/import','/api/sync-checklist'].includes(url.pathname)){
       const raw=await req.text();if(raw.length>500000)return json({error:'Batch too large'},413);
-      const rows=JSON.parse(raw);if(!Array.isArray(rows)||!rows.length||rows.length>30||!rows.every(validate))return json({error:'Invalid checklist batch'},400);
+      let rows=JSON.parse(raw);const incremental=url.pathname==='/api/sync-checklist';if(!Array.isArray(rows)||!rows.length||rows.length>30)return json({error:'Invalid checklist batch'},400);
       const previous=await env.DB.prepare("SELECT taxonomy_version FROM checklists WHERE taxonomy_version <> ? LIMIT 1").bind(VERSION).first();if(previous)return json({error:'Existing data uses a different taxonomy version; full migration required'},409);
       let index;try{index=(await getTaxonomy()).index}catch(e){return json({error:'Official taxonomy unavailable: '+e.message},503)}
+      let locationWarning=false;
+      if(incremental){
+        if(rows.length!==1)return json({error:'Only one verified checklist per sync'},400);
+        const c=rows[0];if(!c||!/^S\d+$/.test(c.id||'')||!/^L\d+$/.test(c.location_id||'')||!Array.isArray(c.observations)||!c.observations.length||c.observations.length>1000)return json({error:'Invalid checklist snapshot'},400);
+        const seen=new Set(),observations=[];
+        for(const o of c.observations){const t=index.byCode.get(o.code);if(!t||seen.has(o.code)||!(o.count==='X'||Number.isSafeInteger(o.count)&&o.count>=0))return json({error:'Unknown or duplicate official taxon: '+String(o.code||'')},422);seen.add(o.code);observations.push({common:t.common,scientific:t.scientific,count:o.count});}
+        const old=await env.DB.prepare('SELECT * FROM checklists WHERE id=?').bind(c.id).first();
+        const geo=old?.location_id===c.location_id?old:await env.DB.prepare('SELECT region,county,lat,lon FROM checklists WHERE location_id=? AND lat IS NOT NULL AND lon IS NOT NULL ORDER BY date DESC LIMIT 1').bind(c.location_id).first();
+        const row={...c,...(geo?{region:geo.region,county:geo.county,lat:geo.lat,lon:geo.lon}:{}),observations};
+        locationWarning=!geo||geo.lat==null||geo.lon==null;
+        if(old&&old.location_id===row.location_id&&old.date===row.date&&old.time===row.time&&old.duration===row.duration&&old.distance===row.distance&&old.complete===row.complete){
+          const actual=JSON.parse(old.observations);const signature=xs=>xs.map(o=>o.taxon_code+':'+o.count).sort().join('|');
+          if(signature(actual)===signature(c.observations.map(o=>({taxon_code:o.code,count:o.count}))))return json({imported:0,unchanged:true,locationWarning});
+        }
+        rows=[row];
+      }
+      if(!rows.every(validate))return json({error:'Invalid checklist batch'},400);
       const sql='INSERT INTO checklists (id,location_id,location,date,time,duration,distance,protocol,complete,species,individuals,unknown,observations,taxonomy_version,unresolved,region,county,lat,lon) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET location_id=excluded.location_id,location=excluded.location,date=excluded.date,time=excluded.time,duration=excluded.duration,distance=excluded.distance,protocol=excluded.protocol,complete=excluded.complete,species=excluded.species,individuals=excluded.individuals,unknown=excluded.unknown,observations=excluded.observations,taxonomy_version=excluded.taxonomy_version,unresolved=excluded.unresolved,region=excluded.region,county=excluded.county,lat=excluded.lat,lon=excluded.lon';
       const number=x=>typeof x==='number'&&Number.isFinite(x)?x:null;
       await env.DB.batch(rows.map(c=>{const s=summarizeOfficial(c.observations.map(o=>({common:o.common,scientific:o.scientific,count:o.count})),index);return env.DB.prepare(sql).bind(c.id,c.location_id,c.location,c.date,c.time,number(c.duration),number(c.distance),typeof c.protocol==='string'?c.protocol.slice(0,100):null,c.complete===1?1:0,s.species,s.individuals,s.unknown,JSON.stringify(s.observations),s.taxonomy_version,s.unresolved,typeof c.region==='string'?c.region.slice(0,32):'',typeof c.county==='string'?c.county.slice(0,100):'',typeof c.lat==='number'&&Math.abs(c.lat)<=90?c.lat:null,typeof c.lon==='number'&&Math.abs(c.lon)<=180?c.lon:null)}));
-      return json({imported:rows.length});
+      return json({imported:rows.length,locationWarning});
     }
     return json({error:'Not found'},404);
   }catch(e){return json({error:'Request failed'},500)}
