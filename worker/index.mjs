@@ -39,7 +39,7 @@ export default {async fetch(req,env){
     if(req.method==='GET'&&url.pathname==='/api/capabilities'){return json({schema:4,taxonomy:VERSION});}
     if(req.method==='GET'&&url.pathname==='/api/dataset'){
       const after=url.searchParams.get('after')||'';if(after&&!/^S\d+$/.test(after))return json({error:'Invalid cursor'},400);
-      const r=await env.DB.prepare('SELECT * FROM checklists WHERE id > ? ORDER BY id LIMIT 101').bind(after).all();const items=r.results.slice(0,100);return json({rows:items.map(x=>({...x,observations:JSON.parse(x.observations)})),next:r.results.length>100?items.at(-1).id:null});
+      const limit=200;const r=await env.DB.prepare('SELECT * FROM checklists WHERE id > ? ORDER BY id LIMIT ?').bind(after,limit+1).all();const items=r.results.slice(0,limit);const total=after?undefined:(await env.DB.prepare('SELECT COUNT(*) AS n FROM checklists').first()).n;return json({rows:items.map(x=>({...x,observations:JSON.parse(x.observations)})),next:r.results.length>limit?items.at(-1).id:null,total});
     }
     if(req.method==='GET'&&url.pathname==='/api/taxonomy'){return json((await getTaxonomy()).data);}
     if(req.method==='GET'&&url.pathname==='/api/locations'){
